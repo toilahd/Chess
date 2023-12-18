@@ -5,7 +5,10 @@ This is our main driver file, which will be responsible for handling user input 
 
 
 import pygame as p
-from Chess import ChessEngine
+import pygame.display
+
+import ChessEngine
+
 
 
 WIDTH = HEIGHT = 512
@@ -16,30 +19,37 @@ IMAGES = {}
 
 
 """
-Initilize a global dictionary of images. This will be called exactly once in the main.
+Initialize a global dictionary of images. This will be called exactly once in the main.
 """
+
 
 def loadImages():
     pieces = ['bR', 'bN', 'bB', 'bQ', 'bK', 'bp', 'wp', 'wR', 'wN', 'wB', 'wQ', 'wK']
     for piece in pieces:
-        IMAGES[piece] = p.transform.scale(p.image.load("images/" + piece + ".png"), (SQ_SIZE, SQ_SIZE))
+        IMAGES[piece] = p.transform.scale(p.image.load("./images/" + piece + ".png"), (SQ_SIZE, SQ_SIZE))
 
 
 
 def main():
     p.init()
+
     screen = p.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption('Chess with Heus')
     clock = p.time.Clock()
     screen.fill(p.Color("white"))
     gs = ChessEngine.GameState()
     loadImages()
+    validMoves = gs.getValidMoves()
+    moveMade = False #flag variable for when a move is made
     running = True
     sqSelected = () #no square is selected, keep track of the last click of the user
     playerClicks = [] #keep track of player clicks (two tuples)
+
     while running:
         for e in p.event.get():
             if e.type == p.QUIT:
                 running = False
+            #move handler
             elif e.type == p.MOUSEBUTTONDOWN:
                 location = p.mouse.get_pos()  #(x,y) location of mouse
                 col = location[0]//SQ_SIZE
@@ -51,11 +61,23 @@ def main():
                     sqSelected = (row, col)
                     playerClicks.append(sqSelected)
                 if len(playerClicks) == 2: #after the second click
-                    move = ChessEngine.Move(playerClicks[0], playerClicks[1], gs.board  )
+                    move = ChessEngine.Move(playerClicks[0], playerClicks[1], gs.board)
                     print(move.getChessNotation())
-                    gs.makeMove(move)
+                    if move in validMoves:
+                        gs.makeMove(move)
+                        moveMade = True
                     sqSelected = () #reset user clicks
                     playerClicks = []
+
+            #key handler
+            elif e.type == p.KEYDOWN:
+                if e.key == p.K_z: #undo when 'z' is pressed
+                    gs.undoMove()   
+                    moveMade = True
+                    
+        if moveMade:
+            validMoves = gs.getValidMoves()
+            moveMade = False
         drawGameState(screen, gs)
         clock.tick(MAX_FPS)
         p.display.flip()
@@ -84,8 +106,6 @@ def drawPieces(screen, board):
             piece = board[r][c]
             if piece != "__":
                 screen.blit(IMAGES[piece], p.Rect(c*SQ_SIZE, r*SQ_SIZE, SQ_SIZE, SQ_SIZE))
-
-
 
 
 if __name__ == '__main__':
